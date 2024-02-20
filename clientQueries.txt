@@ -31,3 +31,102 @@ query getByUserId{
     lastName
   }
 }
+
+----------------------------------------------------------------
+
+# Write your query or mutation here
+query getQuotesByUser{
+  iquotes(by:"4232"){
+    name
+    by
+  }
+}
+# Write your query or mutation here
+query getQuotesByUser($quote: ID!){
+  iquotes(by:$quote){
+    name
+    by
+  }
+}
+
+{
+  "quote": "23131"
+}
+
+
+----------------------------------------------------------------
+# Write your query or mutation here
+query getByUserId($userid: ID!) {
+  user(id: $userid) {
+    id
+    firstName
+    email
+    lastName
+  }
+}
+
+
+----------------------------------------------------------------
+//   type Mutation {
+//     signupUserDummy(
+//       firstName: String!
+//       lastName: String!
+//       email: String!
+//       password: String!
+//     ): User
+
+
+
+Mutation: {
+    signupUserDummy: (_, { firstName, lastName, email, password }) => {
+      const id = randomBytes(5).toString("hex");
+      users.push({
+        id,
+        firstName,
+        lastName,
+        email,
+        password,
+      });
+      return users.find((user) => user.id === id);
+    },
+  },
+
+  mutation{
+  signupUserDummy(firstName:"Aftab", lastName:"Ansari", email:"aftabjdnnd", password:"123456"){
+    id
+    email
+    firstName
+    lastName
+  }
+}
+
+
+----------------------------------------------------------------
+mutation createUser($userNew: UserInput!){
+  user:signupUserDummy(userNew: $userNew){
+    id
+    email
+    firstName
+    lastName
+  }
+}
+
+{
+  "userNew": {
+    "firstName": "aaa",
+    "lastName": "bbbb",
+    "email": "dnfjklf",
+    "password": "123456"
+  }
+}
+
+{
+  "data": {
+    "user": {
+      "id": "e21073897f",
+      "email": "dnfjklf",
+      "firstName": "aaa",
+      "lastName": "bbbb"
+    }
+  }
+}
