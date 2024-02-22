@@ -2,8 +2,9 @@ import { users, quotes } from "./fackdb.js";
 import { randomBytes } from "crypto";
 import bcrypt from "bcrypt";
 import mongoose from "mongoose";
-const User = mongoose.model("userModel");
 import jwt from "jsonwebtoken";
+const User = mongoose.model("userModel");
+const Quote = mongoose.model("quoteModel");
 
 const resolvers = {
   Query: {
@@ -31,6 +32,7 @@ const resolvers = {
 
       return await newUser.save();
     },
+
     signinUser: async (_, { userSignIn }) => {
       const user = await User.findOne({ email: userSignIn.email });
       if (!user) {
@@ -42,6 +44,15 @@ const resolvers = {
       }
       let token = jwt.sign({ userId: user._id }, "AFTABHU12");
       return { token };
+    },
+
+    createQuote: async (_, { name }, { userId }) => {
+      if (!userId) {
+        throw new Error("You must be logged in");
+      }
+      const newQuote = new Quote({ name, userId });
+      await newQuote.save();
+      return "Quote saved successfully";
     },
   },
 };

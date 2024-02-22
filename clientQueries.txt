@@ -131,3 +131,31 @@ mutation createUser($userNew: UserInput!){
     }
   }
 }
+
+
+------------------------
+
+mutation createUser($userSignIn: UserSigninInput!){
+  user:signinUser(userSignIn: $userSignIn){
+    token
+  }
+}
+
+
+{
+  "userSignIn":  {
+    "email": "dnfjklf",
+    "password": "12345"
+  }
+}
+
+
+{
+  "data": {
+    "user": {
+      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2NWQ1ODMwYWM2NjdiZDI1ODlhYzgzN2IiLCJpYXQiOjE3MDg1NjgxMTJ9.-MR2xq1W_JOmUfnVvD4PLjMpX3dJ0O-S2dDZOc8KyzQ"
+    }
+  }
+}
+
+
