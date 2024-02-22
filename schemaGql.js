@@ -4,9 +4,19 @@ const typeDefs = gql`
   type Query {
     users: [User]
     user(_id: ID!): User
-    quotes: [Quotes]
+    quotes: [QuoteWithName]
     iquotes(by: ID!): [Quotes]
   }
+
+  type QuoteWithName {
+    name: String
+    by: IdName
+  }
+  type IdName{
+    _id:String
+    firstName:String
+  }
+
   type User {
     _id: ID!
     firstName: String!

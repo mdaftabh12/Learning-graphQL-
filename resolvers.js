@@ -8,15 +8,16 @@ const Quote = mongoose.model("quoteModel");
 
 const resolvers = {
   Query: {
-    users: () => users,
-    user: (_, { _id }) => users.find((user) => user._id === _id),
-    quotes: () => quotes,
-    iquotes: (_, { by }) => quotes.filter((quote) => quote.by === by),
+    users: async () => await User.find(),
+    user: async (_, { _id }) => await User.findById(_id),
+    quotes: async () => await Quote.find({}).populate("by", "_id firstName"),
+    iquotes: async (_, { by }) => await Quote.find({ by: by }),
   },
   User: {
-    quotes: (user) => quotes.filter((quote) => quote.by == user._id),
+    quotes: async (user) => {
+      await Quote.find({ by: user._id });
+    },
   },
-
   Mutation: {
     signupUser: async (_, { userNew }) => {
       const user = await User.findOne({ email: userNew.email });
@@ -50,7 +51,8 @@ const resolvers = {
       if (!userId) {
         throw new Error("You must be logged in");
       }
-      const newQuote = new Quote({ name, userId });
+      console.log(userId);
+      const newQuote = new Quote({ name, by: userId });
       await newQuote.save();
       return "Quote saved successfully";
     },

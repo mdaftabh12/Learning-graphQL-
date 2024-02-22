@@ -159,3 +159,16 @@ mutation createUser($userSignIn: UserSigninInput!){
 }
 
 
+------------  Populate  ----------
+
+# Write your query or mutation here
+query getAllQuotes{
+  quotes{
+    name
+    by{
+      _id
+      firstName
+    }
+  }
+}
+
