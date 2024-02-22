@@ -3,7 +3,7 @@
 # Write your query or mutation here
 query getAllUsers{
   users{
-    id
+    _id
     firstName
     lastName
     email
@@ -24,8 +24,8 @@ query getAllQuotes{
 
 # Write your query or mutation here
 query getByUserId{
-  user(id: "23131"){
-    id
+  user(_id: "23131"){
+    _id
     firstName
     email
     lastName
@@ -57,8 +57,8 @@ query getQuotesByUser($quote: ID!){
 ----------------------------------------------------------------
 # Write your query or mutation here
 query getByUserId($userid: ID!) {
-  user(id: $userid) {
-    id
+  user(_id: $userid) {
+    _id
     firstName
     email
     lastName
@@ -79,21 +79,21 @@ query getByUserId($userid: ID!) {
 
 Mutation: {
     signupUserDummy: (_, { firstName, lastName, email, password }) => {
-      const id = randomBytes(5).toString("hex");
+      const _id = randomBytes(5).toString("hex");
       users.push({
-        id,
+        _id,
         firstName,
         lastName,
         email,
         password,
       });
-      return users.find((user) => user.id === id);
+      return users.find((user) => user._id === _id);
     },
   },
 
   mutation{
   signupUserDummy(firstName:"Aftab", lastName:"Ansari", email:"aftabjdnnd", password:"123456"){
-    id
+    _id
     email
     firstName
     lastName
@@ -105,7 +105,7 @@ Mutation: {
 
 mutation createUser($userNew: UserInput!){
   user:signupUserDummy(userNew: $userNew){
-    id
+    _id
     email
     firstName
     lastName
@@ -124,7 +124,7 @@ mutation createUser($userNew: UserInput!){
 {
   "data": {
     "user": {
-      "id": "e21073897f",
+      "_id": "e21073897f",
       "email": "dnfjklf",
       "firstName": "aaa",
       "lastName": "bbbb"
