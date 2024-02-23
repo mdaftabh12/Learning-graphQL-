@@ -1,0 +1,456 @@
+const mongoose = require("mongoose");
+
+const visaApplicationSchema = new mongoose.Schema(
+  {
+    name: String,
+    idNumber: Number,
+    passportNumber: Number,
+    phoneNumber: Number,
+    destinationCountry: String,
+    durationOfVisit: Number,
+    email: String,
+    purposeOfVisit: String,
+    date: Date,
+    photo: String,
+    idImage: String,
+    passportImage: String,
+    status: {
+      type: String,
+      enum: ["PENDING", "APPROVED", "REJECTED"],
+      default: "PENDING",
+    },
+    createdBy: {
+      type: mongoose.Types.ObjectId,
+      ref: "userModel",
+    },
+    disabled: {
+      type: Boolean,
+      default: false,
+    },
+  },
+  { timestamps: true },
+);
+
+module.exports = mongoose.model("visaApplicationModel", visaApplicationSchema);
+
+
+-----------------------------
+
+
+const visaApplicationController = require("../controllers/visaApplicationController");
+const {
+  createVisaApplicationValidation,
+  updateVisaApplicationValidation,
+} = require("../joi/visaApplicationJoi");
+const { getUser } = require("../middlewares/userMidd");
+const { getVisaApplication } = require("../middlewares/visaApplicationMidd");
+const upload = require("../middlewares/multer");
+const express = require("express");
+const router = express.Router();
+
+router.post(
+  "/createVisaApplication/:userId",
+  upload.fields([
+    { name: "photo" },
+    { name: "idImage" },
+    { name: "passportImage" },
+  ]),
+  getUser,
+  createVisaApplicationValidation,
+  visaApplicationController.createVisaApplication,
+);
+
+router.get(
+  "/getAllVisaApplications",
+  visaApplicationController.getAllVisaApplications,
+);
+router.get(
+  "/getByVisaApplicationId/:visaApplicationId",
+  getVisaApplication,
+  visaApplicationController.getByVisaApplicationId,
+);
+router.put(
+  "/updateVisaApplication/:visaApplicationId",
+  upload.fields([
+    { name: "photo" },
+    { name: "idImage" },
+    { name: "passportImage" },
+  ]),
+  getVisaApplication,
+  updateVisaApplicationValidation,
+  visaApplicationController.updateVisaApplication,
+);
+router.put(
+  "/approveVisaApplication/:visaApplicationId",
+  getVisaApplication,
+  visaApplicationController.approveVisaApplication,
+);
+router.put(
+  "/rejectVisaApplication/:visaApplicationId",
+  getVisaApplication,
+  visaApplicationController.rejectVisaApplication,
+);
+router.delete(
+  "/deleteVisaApplication/:visaApplicationId",
+  getVisaApplication,
+  visaApplicationController.deleteVisaApplication,
+);
+
+module.exports = router;
+
+
+----------------------------------------------------------------
+
+const Joi = require("joi");
+
+//==========  Create visa application validation  ==========//
+
+exports.createVisaApplicationValidation = async (req, res, next) => {
+  try {
+    let schema = Joi.object().keys({
+      name: Joi.string().required().min(3).max(30),
+      idNumber: Joi.number().required(),
+      passportNumber: Joi.number().required(),
+      email: Joi.string()
+        .email({ minDomainSegments: 2, tlds: { allow: ["com", "in"] } })
+        .required(),
+      phoneNumber: Joi.number()
+        .integer()
+        .min(7000000000)
+        .max(9999999999)
+        .required(),
+      destinationCountry: Joi.string().required(),
+      purposeOfVisit: Joi.string().required(),
+      durationOfVisit: Joi.number().required(),
+      date: Joi.date().required(),
+    });
+    let schema2 = Joi.object().keys({
+      photo: Joi.array().required(),
+      idImage: Joi.array().required(),
+      passportImage: Joi.array().required(),
+    });
+
+    await schema.validateAsync(req.body);
+    await schema2.validateAsync(req.files);
+    next();
+  } catch (err) {
+    res.status(400).json({
+      success: false,
+      message: err.details[0].message.replace(/['"]/g, ""),
+    });
+  }
+};
+
+//==========  Update visa application validation  ==========//
+
+exports.updateVisaApplicationValidation = async (req, res, next) => {
+  try {
+    let schema = Joi.object().keys({
+      name: Joi.string().min(3).max(30),
+      idNumber: Joi.number(),
+      passportNumber: Joi.number(),
+      email: Joi.string().email({
+        minDomainSegments: 2,
+        tlds: { allow: ["com", "in"] },
+      }),
+      phoneNumber: Joi.number().integer().min(7000000000).max(9999999999),
+      destinationCountry: Joi.string(),
+      purposeOfVisit: Joi.string(),
+      durationOfVisit: Joi.number(),
+      date: Joi.date(),
+    });
+    let schema2 = Joi.object().keys({
+      photo: Joi.array(),
+      idImage: Joi.array(),
+      passportImage: Joi.array(),
+    });
+
+    await schema.validateAsync(req.body);
+    await schema2.validateAsync(req.files);
+    next();
+  } catch (err) {
+    res.status(400).json({
+      success: false,
+      message: err.details[0].message.replace(/['"]/g, ""),
+    });
+  }
+};
+
+
+----------------------------------------------------------------
+
+const visaApplicationModel = require("../models/visaApplicationModel");
+const {
+  uploadOnCloudinary,
+  deleteFromCloudinary,
+} = require("../utils/cloudinary");
+
+//============  Create visa application  ============//
+
+exports.createVisaApplication = async (req, res) => {
+  try {
+    let {
+      name,
+      idNumber,
+      passportNumber,
+      phoneNumber,
+      destinationCountry,
+      durationOfVisit,
+      email,
+      purposeOfVisit,
+      date,
+    } = req.body;
+
+    let photo;
+    let idImage;
+    let passportImage;
+    if (req.files) {
+      let localPathPhoto = req.files ? req.files?.photo[0].path : "";
+      let localPathIdImage = req.files ? req.files?.idImage[0].path : "";
+      let localPathPassportImage = req.files
+        ? req.files?.passportImage[0].path
+        : "";
+      if (localPathPhoto) {
+        photo = await uploadOnCloudinary(localPathPhoto);
+      }
+      if (localPathIdImage) {
+        idImage = await uploadOnCloudinary(localPathIdImage);
+      }
+      if (localPathPassportImage) {
+        passportImage = await uploadOnCloudinary(localPathPassportImage);
+      }
+    }
+    const data = await visaApplicationModel.create({
+      name: name,
+      idNumber: idNumber,
+      passportNumber: passportNumber,
+      phoneNumber: phoneNumber,
+      email: email,
+      destinationCountry: destinationCountry,
+      purposeOfVisit: purposeOfVisit,
+      durationOfVisit: durationOfVisit,
+      date: date,
+      photo: photo?.url || "",
+      idImage: idImage?.url || "",
+      passportImage: passportImage?.url || "",
+      createdBy: req.params.userId,
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: `Dear ${name}, your visa application for ${destinationCountry} has been successfully submitted. We will review your application and notify you of any updates via email.`,
+      data: data,
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+//===========  Get all visa application  ===========//
+
+exports.getAllVisaApplications = async (req, res) => {
+  try {
+    let visaApplication = await visaApplicationModel
+      .find({ status: "PENDING" })
+      .populate("createBy");
+
+    if (!visaApplication.length) {
+      return res
+        .status(404)
+        .json({ success: false, message: "No visa applications found." });
+    }
+    return res.status(200).json({
+      success: true,
+      message: "Retrieved all pending visa applications.",
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+//===========  Get by visaApplicationId  ===========//
+
+exports.getByVisaApplicationId = async (req, res) => {
+  try {
+    return res.status(200).json({
+      success: true,
+      message: "Retrieved visa applications.",
+      data: req.visaApplicationId,
+      userMessage:
+        "Dear User, here are your pending visa applications. Please review them.",
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+//===========  Update visa application  ===========//
+
+exports.updateVisaApplication = async (req, res) => {
+  try {
+    let visaApplicationId = req.visaApplicationId;
+    let {
+      name,
+      idNumber,
+      passportNumber,
+      phoneNumber,
+      destinationCountry,
+      durationOfVisit,
+      email,
+      purposeOfVisit,
+      date,
+    } = req.body;
+
+    let photo;
+    let idImage;
+    let passportImage;
+    if (req.files) {
+      let localPathPhoto = req.files ? req.files?.photo[0].path : "";
+      let localPathIdImage = req.files ? req.files?.idImage[0].path : "";
+      let localPathPassportImage = req.files
+        ? req.files?.passportImage[0].path
+        : "";
+      if (localPathPhoto) {
+        photo = await uploadOnCloudinary(localPathPhoto);
+      }
+      if (localPathIdImage) {
+        idImage = await uploadOnCloudinary(localPathIdImage);
+      }
+      if (localPathPassportImage) {
+        passportImage = await uploadOnCloudinary(localPathPassportImage);
+      }
+    }
+    const data = await visaApplicationModel.findByIdAndUpdate(
+      { _id: visaApplicationId._id },
+      {
+        $set: {
+          name: name,
+          idNumber: idNumber,
+          passportNumber: passportNumber,
+          phoneNumber: phoneNumber,
+          email: email,
+          destinationCountry: destinationCountry,
+          purposeOfVisit: purposeOfVisit,
+          durationOfVisit: durationOfVisit,
+          date: date,
+          photo: photo?.url || "",
+          idImage: idImage?.url || "",
+          passportImage: passportImage?.url || "",
+          createdBy: req.params.userId,
+        },
+      },
+      { new: true },
+    );
+
+    return res.status(201).json({
+      success: true,
+      message: `Dear ${name}, your visa application for ${destinationCountry} has been successfully submitted. We will review your application and notify you of any updates via email.`,
+      data: data,
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+//===========  Approve visa application  ===========//
+
+exports.approveVisaApplication = async (req, res) => {
+  try {
+    let visaApplicationId = req.visaApplicationId;
+    let visaApplication = await visaApplicationModel.findByIdAndUpdate(
+      { _id: visaApplicationId._id },
+      {
+        $set: {
+          status: "APPROVED",
+        },
+      },
+      { new: true },
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Visa application approved successfully.",
+      data: visaApplication,
+      userMessage: "Your visa application has been approved.",
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+//========  Reject visa application  ===========//
+
+exports.rejectVisaApplication = async (req, res) => {
+  try {
+    let visaApplicationId = req.visaApplicationId;
+    let visaApplication = await visaApplicationModel.findByIdAndUpdate(
+      { _id: visaApplicationId._id },
+      {
+        $set: {
+          status: "REJECTED",
+        },
+      },
+      { new: true },
+    );
+
+    const userMessage = "Your visa application has been rejected.";
+
+    return res.status(200).json({
+      success: true,
+      message: "Visa application rejected successfully.",
+      data: visaApplication,
+      userMessage: userMessage,
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+//========  Delete visa application  ===========//
+
+exports.deleteVisaApplication = async (req, res) => {
+  try {
+    let visaApplicationId = req.visaApplicationId;
+
+    await visaApplicationModel.findByIdAndDelete({
+      _id: visaApplicationId._id,
+    });
+
+    const userMessage = "Your visa application has been successfully deleted.";
+
+    return res.status(200).json({
+      success: true,
+      message: "Visa application deleted successfully.",
+      userMessage: userMessage,
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+
+----------------------------------------------------------------
+
+const visaApplicationModel = require("../models/visaApplicationModel");
+
+//============  Get visa application  =============//
+
+exports.getVisaApplication = async (req, res, next) => {
+  try {
+    let check = await visaApplicationModel.findById({
+      _id: req.params.visaApplicationId,
+    });
+    if (!check) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Visa application not found." });
+    }
+    req.visaApplicationId = check;
+    next();
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+
+--------------------------------------------------
